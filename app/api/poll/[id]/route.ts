@@ -1,15 +1,20 @@
-import {NextResponse} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import {connectDB} from '@/lib/mongodb';
 import Poll from '@/models/Poll';
 import mongoose from 'mongoose';
 
+interface RouteContext {
+    params: {
+        id: string;
+    };
+}
 export async function GET(
-    request: Request,
-    {params}: { params: { id: string } }
-) {
-    let parameters = await params;
+    request: NextRequest,
+    context: RouteContext
+){
+    const { id } =  await context.params;
+    const pollId = id;
     await connectDB();
-    const pollId = parameters.id;
 
     console.log("Parameter received in API (pollId):", pollId);
 
