@@ -19,3 +19,5 @@ yarn-error.log
 
 # IDE specific files (e.g., VS Code)
 .vscode
+
+/.idea/
