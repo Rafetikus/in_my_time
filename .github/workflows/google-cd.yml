@@ -1,0 +1,57 @@
+name: CD - Deploy to Cloud Run (Docker-First)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci_check:
+    name: CI Check
+    uses: ./.github/workflows/ci.yml
+
+  deploy_to_cloud_run:
+    runs-on: ubuntu-latest
+    needs: ci_check
+
+    env:
+      PROJECT_ID: inmytime
+      SERVICE_NAME: in-my-time2
+      REGION: europe-west1
+      IMAGE_REPO_URL: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/cloud-run-repo/next-app
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: 1. ⬇️ Checkout Repository (Dockerfile üçün)
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Configure Docker to use Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_REPO_URL }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy new image to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_REPO_URL }}:${{ env.IMAGE_TAG }}
+          project_id: ${{ env.PROJECT_ID }}
+          env_vars: |
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            NODE_ENV=production
