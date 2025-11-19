@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci_check
 
+    environment:
+      name: Production # GitHub Environments-dəki mühitin adı (Məsələn: Production, Staging)
+      url: ${{ steps.deploy.outputs.url }} # Deployment bitdikdən sonra alınacaq URL
+
     steps:
       - name: 1. Checkout Code
         uses: actions/checkout@v4
@@ -37,6 +41,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: 5. Deploy to Vercel Production
+        id: deploy-vercel
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
