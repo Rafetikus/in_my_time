@@ -20,7 +20,7 @@ jobs:
 
     environment:
       name: Production # GitHub Environments-dəki mühitin adı (Məsələn: Production, Staging)
-      url: ${{ steps.deploy.outputs.url }} # Deployment bitdikdən sonra alınacaq URL
+      url: ${{ steps.deploy.outputs.preview-url }} # Deployment bitdikdən sonra alınacaq URL
 
     steps:
       - name: 1. Checkout Code
