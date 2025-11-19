@@ -3,7 +3,7 @@ name: GHCR Continuous Deployment
 on:
   push:
     branches:
-      - main-ghcr
+      - main
 
 jobs:
   build_and_push_image:
