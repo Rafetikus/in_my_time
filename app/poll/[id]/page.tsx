@@ -4,13 +4,13 @@ import { getPollData } from '@/lib/data-fetcher';
 
 
 interface PollPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function PollPage({ params }: PollPageProps) {
-    let parameters =  await params;
+    const parameters =  await params;
     const pollId = parameters.id;
 
     let pollData;

@@ -1,5 +1,5 @@
 import { IPoll } from '@/types/Poll';
-import { addMinutes, setHours, setMinutes, parseISO, isSameDay, addDays } from 'date-fns';
+import { addMinutes, setHours, setMinutes } from 'date-fns';
 
 export function generateAvailableSlots(config: IPoll['config']): Date[] {
     const { targetDates, dailyStartTime, dailyEndTime, slotDuration } = config;

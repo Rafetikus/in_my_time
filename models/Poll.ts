@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Model } from 'mongoose';
 import {IPoll, IVote} from "@/types/Poll";
 
 const VoteSchema: Schema = new Schema<IVote>({

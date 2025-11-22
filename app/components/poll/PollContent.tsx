@@ -7,7 +7,6 @@ import {
     Check,
     ArrowRight,
     Loader2,
-    Share2,
     Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,7 +139,7 @@ export function PollContent({ pollData, pollId }: PollContentProps) {
                 console.log(`[CLIENT]: Vote ID ${pollId} successfully updated.`);
             }
 
-        } catch (err) {
+        } catch (_) {
             setUserVotes(originalUserVotes);
             setPoll(originalPollData);
             setError('Network Error: Could not connect to the server.');
