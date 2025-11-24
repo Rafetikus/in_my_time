@@ -1,158 +1,447 @@
-"use client"
+"use client";
 
-import { useState } from 'react';
-import { PlusCircle, Trash2, Calendar, Send } from 'lucide-react';
-
-interface DateSlot {
-    id: number;
-    time: string;
-}
+import { FormEvent, useMemo, useState } from "react";
+import { Calendar, PlusCircle, Send, Clock, SlidersHorizontal } from "lucide-react";
 
 export default function CreatePollPage() {
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [dateSlots, setDateSlots] = useState<DateSlot[]>([]);
-    const [newDateValue, setNewDateValue] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
 
-    const handleAddDate = () => {
-        if (newDateValue.trim() && !dateSlots.some(slot => slot.time === newDateValue)) {
-            const newSlot: DateSlot = {
-                id: Date.now(),
-                time: newDateValue
-            };
-            setDateSlots([...dateSlots, newSlot]);
-            setNewDateValue('');
-        }
+  // HYBRID DATE SELECTION (days only)
+  const [singleDate, setSingleDate] = useState(""); // YYYY-MM-DD
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [targetDates, setTargetDates] = useState<string[]>([]);
+
+  // TIME WINDOW + SLOT DURATION
+  const [dailyStartTime, setDailyStartTime] = useState("09:00");
+  const [dailyEndTime, setDailyEndTime] = useState("17:00");
+  const [slotDuration, setSlotDuration] = useState<number>(60);
+
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // --- helpers ---
+
+  const handleAddSingleDate = () => {
+    setError(null);
+    if (!singleDate) return;
+
+    setTargetDates((prev) => {
+      if (prev.includes(singleDate)) return prev;
+      return [...prev, singleDate].sort();
+    });
+    setSingleDate("");
+  };
+
+  const generateDateRange = (start: string, end: string): string[] => {
+    const result: string[] = [];
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return result;
+    if (startDate > endDate) return result;
+
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const iso = current.toISOString().slice(0, 10);
+      result.push(iso);
+      current.setDate(current.getDate() + 1);
+    }
+    return result;
+  };
+
+  const handleAddRange = () => {
+    setError(null);
+    if (!rangeStart || !rangeEnd) {
+      setError("Please choose start and end dates for the range.");
+      return;
+    }
+
+    const dates = generateDateRange(rangeStart, rangeEnd);
+    if (dates.length === 0) {
+      setError("Invalid date range.");
+      return;
+    }
+
+    setTargetDates((prev) => {
+      const set = new Set(prev);
+      for (const d of dates) set.add(d);
+      return Array.from(set).sort();
+    });
+  };
+
+  const handleRemoveDate = (date: string) => {
+    setTargetDates((prev) => prev.filter((d) => d !== date));
+  };
+
+  // a tiny preview of a few dates (right-side card)
+  const previewDates = useMemo(() => targetDates.slice(0, 4), [targetDates]);
+
+  // --- submit ---
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+
+    if (targetDates.length === 0) {
+      setError("Please add at least one target date.");
+      return;
+    }
+
+    if (!dailyStartTime || !dailyEndTime) {
+      setError("Please set daily start and end times.");
+      return;
+    }
+
+    if (!slotDuration || slotDuration <= 0) {
+      setError("Slot duration must be a positive number.");
+      return;
+    }
+
+    const config = {
+      targetDates, // strings "YYYY-MM-DD" – backend converts to Date[]
+      dailyStartTime,
+      dailyEndTime,
+      slotDuration,
     };
 
-    const handleRemoveDate = (id: number) => {
-        setDateSlots(dateSlots.filter(slot => slot.id !== id));
+    const payload = {
+      title,
+      description,
+      ownerId: "demo-owner-id", // TODO: replace with real user id from auth
+      config,
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!title || dateSlots.length === 0) {
-            alert("Title and at least one date/time option are required!");
-            return;
-        }
+    console.log("Data to be sent:", payload);
 
-        console.log("Data to be sent:", {
-            title,
-            description,
-            availableDates: dateSlots.map(d => d.time)
-        });
+    setLoading(true);
+    try {
+      const res = await fetch("/api/polls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-        // API POST request logic goes here
-    };
+      const data = await res.json();
 
-    return (
-        <main className="min-h-screen bg-gray-50 py-12 md:py-16">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border border-gray-100">
+      if (!res.ok) {
+        setError(data.message || "Failed to create poll.");
+      } else {
+        // reset form
+        setTitle("");
+        setDescription("");
+        setSingleDate("");
+        setRangeStart("");
+        setRangeEnd("");
+        setTargetDates([]);
+        setDailyStartTime("09:00");
+        setDailyEndTime("17:00");
+        setSlotDuration(60);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Server error.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    <header className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
-                            <Calendar className="w-7 h-7 text-indigo-600"/>
-                            Create New Poll
-                        </h1>
-                        <p className="text-gray-500 mt-2">
-                            Set the event details and available time slots for participants.
-                        </p>
-                    </header>
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-indigo-50 py-10 md:py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* top title similar to hero */}
+        <div className="mb-8 text-center md:text-left">
+          <p className="text-sm uppercase tracking-[0.2em] text-indigo-500 font-semibold">
+            Create Poll
+          </p>
+          <h1 className="mt-2 text-3xl md:text-4xl font-bold text-slate-900">
+            Find the <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">perfect time</span> for your team
+          </h1>
+          <p className="mt-2 text-slate-500 max-w-2xl">
+            Choose the days and daily time window you’re available. We’ll automatically
+            generate all the time slots for your participants to vote on.
+          </p>
+        </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+        {/* main card */}
+        <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row">
+          {/* LEFT: FORM */}
+          <div className="w-full md:w-7/12 p-6 sm:p-8 lg:p-10">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* title */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2">
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  Event title <span className="text-pink-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Product sync, sprint review, study session…"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
 
-                        <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                                Event Title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="title"
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                                placeholder="Example: Weekly Team Meeting"
-                                required
-                            />
-                        </div>
+              {/* description */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Add an optional note so people know what this meeting is about."
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
 
-                        <div>
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                                Short Description
-                            </label>
-                            <textarea
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                rows={3}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                                placeholder="Describe the purpose of the meeting (optional)."
-                            />
-                        </div>
-
-                        <div>
-                            <h2 className="text-md font-semibold text-gray-700 mb-3">
-                                Suggested Time Slots ({dateSlots.length}) <span className="text-red-500">*</span>
-                            </h2>
-
-                            <div className="flex gap-2">
-                                <input
-                                    type="datetime-local"
-                                    value={newDateValue}
-                                    onChange={(e) => setNewDateValue(e.target.value)}
-                                    className="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleAddDate}
-                                    className="flex items-center gap-1 px-4 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition duration-200 disabled:opacity-50"
-                                >
-                                    <PlusCircle className="w-5 h-5"/> Add
-                                </button>
-                            </div>
-
-                            <div className="mt-4 space-y-3">
-                                {dateSlots.map((slot) => (
-                                    <div
-                                        key={slot.id}
-                                        className="flex justify-between items-center p-3 bg-indigo-50 border border-indigo-200 rounded-lg"
-                                    >
-                                        <span className="text-sm font-medium text-indigo-700">
-                                            {new Date(slot.time).toLocaleString('en-US', {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveDate(slot.id)}
-                                            className="text-red-500 hover:text-red-700 transition duration-150"
-                                            aria-label="Remove"
-                                        >
-                                            <Trash2 className="w-4 h-4"/>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="pt-4">
-                            <button
-                                type="submit"
-                                disabled={!title || dateSlots.length === 0}
-                                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white text-lg font-semibold rounded-xl hover:bg-green-700 transition duration-200 shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            >
-                                <Send className="w-5 h-5"/> Create Poll
-                            </button>
-                        </div>
-                    </form>
-
+              {/* hybrid dates */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-slate-800">
+                    Target dates <span className="text-pink-500">*</span>
+                  </h2>
+                  <span className="text-xs text-slate-500">
+                    {targetDates.length} selected
+                  </span>
                 </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* single date */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
+                      Single day
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={singleDate}
+                        onChange={(e) => setSingleDate(e.target.value)}
+                        className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddSingleDate}
+                        disabled={!singleDate}
+                        className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40"
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        Add
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      Use this when you only need a few specific days.
+                    </p>
+                  </div>
+
+                  {/* range dates */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
+                      Date range
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={rangeStart}
+                          onChange={(e) => setRangeStart(e.target.value)}
+                          className="w-1/2 rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                        />
+                        <input
+                          type="date"
+                          value={rangeEnd}
+                          onChange={(e) => setRangeEnd(e.target.value)}
+                          className="w-1/2 rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddRange}
+                        className="inline-flex items-center gap-1 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-emerald-600"
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        Add range
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-slate-500">
+                      We’ll include every day between these two dates.
+                    </p>
+                  </div>
+                </div>
+
+                {/* chips */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {targetDates.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      No dates selected yet. Add at least one date or range.
+                    </p>
+                  ) : (
+                    targetDates.map((d) => (
+                      <span
+                        key={d}
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
+                      >
+                        {d}
+                        <button
+                          type="button"
+                          className="text-[11px] font-bold"
+                          onClick={() => handleRemoveDate(d)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* time window */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <SlidersHorizontal className="w-4 h-4 text-indigo-500" />
+                  <p className="text-sm font-semibold text-slate-800">
+                    Daily time window
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Start time
+                    </label>
+                    <input
+                      type="time"
+                      value={dailyStartTime}
+                      onChange={(e) => setDailyStartTime(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      End time
+                    </label>
+                    <input
+                      type="time"
+                      value={dailyEndTime}
+                      onChange={(e) => setDailyEndTime(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Slot duration (min)
+                    </label>
+                    <input
+                      type="number"
+                      min={5}
+                      step={5}
+                      value={slotDuration}
+                      onChange={(e) =>
+                        setSlotDuration(Number(e.target.value) || 0)
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  We’ll slice each day into {slotDuration || "…"}-minute slots
+                  between the start and end times.
+                </p>
+              </div>
+
+              {/* error */}
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {error}
+                </p>
+              )}
+
+              {/* submit */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:opacity-95 disabled:opacity-60"
+                >
+                  <Send className="w-4 h-4" />
+                  {loading ? "Creating…" : "Create Poll"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT: PREVIEW CARD */}
+          <div className="w-full md:w-5/12 bg-slate-900 text-slate-50 px-6 py-7 md:px-7 md:py-10 flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300">
+                Live Preview
+              </p>
+              <h2 className="mt-2 text-lg font-semibold">
+                Available Times Overview
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                This is a visual preview of how your configuration will look
+                when participants vote.
+              </p>
+
+              <div className="mt-5 space-y-3">
+                {previewDates.length === 0 ? (
+                  <p className="text-xs text-slate-500">
+                    Start adding dates to see them here.
+                  </p>
+                ) : (
+                  previewDates.map((d, idx) => (
+                    <div
+                      key={d}
+                      className="flex items-center justify-between gap-4"
+                    >
+                      <div className="flex-1">
+                        <div
+                          className={`h-2 rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400`}
+                          style={{
+                            width: `${70 - idx * 10}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-medium">
+                          {new Date(d).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          {dailyStartTime} – {dailyEndTime}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-        </main>
-    );
+
+            <div className="mt-6 border-t border-slate-700 pt-4 text-xs text-slate-400 flex flex-wrap gap-3">
+              <div className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                No signup needed
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="inline-block h-2 w-2 rounded-full bg-pink-400" />
+                Instant availability view
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
