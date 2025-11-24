@@ -11,10 +11,8 @@ export async function POST(request: Request) {
         await connectDB();
         console.log("3. MongoDB connection successful.");
 
-        // Client'tan artık 'availableDates' beklemiyoruz, 'config' bekliyoruz.
         const { title, description, ownerId, config } = body;
 
-        // Yeni validasyon: Config zorunlu
         if (!title || !ownerId || !config) {
             return NextResponse.json(
                 { message: 'Title, owner ID, and config are required.' },
@@ -22,15 +20,22 @@ export async function POST(request: Request) {
             );
         }
 
-        // Backend tarafında slotları hesapla
-        const availableDates = generateAvailableSlots(config);
+        // convert targetDates (strings) → Date objects
+        const normalizedConfig = {
+            ...config,
+            targetDates: (config.targetDates || []).map(
+                (d: string) => new Date(d)
+            ),
+        };
+
+        const availableDates = generateAvailableSlots(normalizedConfig);
 
         const newPoll = await Poll.create({
             title,
             description: description || '',
             ownerId,
-            config,           // UI'ı tekrar çizmek için ayarları sakla
-            availableDates    // Oylama mantığı için hesaplanan tarihleri sakla
+            config: normalizedConfig,
+            availableDates,
         });
 
         console.log("4. Data saved successfully.");
