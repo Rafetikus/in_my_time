@@ -12,10 +12,8 @@ describe('connectDB', () => {
         jest.clearAllMocks();
         jest.resetModules();
 
-        // Reset global.mongoose before each test
         global.mongoose = { conn: null, promise: null };
 
-        // Reset environment
         process.env = { ...originalEnv };
     });
 
@@ -69,10 +67,8 @@ describe('connectDB', () => {
 
         const { connectDB } = await import('@/lib/mongodb');
 
-        // Call connectDB twice concurrently
         const [result1, result2] = await Promise.all([connectDB(), connectDB()]);
 
-        // Should only call mongoose.connect once
         expect(mockConnect).toHaveBeenCalledTimes(1);
         expect(result1).toBe(result2);
     });
@@ -87,7 +83,6 @@ describe('connectDB', () => {
 
         await expect(connectDB()).rejects.toThrow('Connection failed');
 
-        // After error, promise should be reset to null
         expect(global.mongoose.promise).toBeNull();
     });
 });

@@ -54,13 +54,11 @@ describe('generateAvailableSlots', () => {
         const slots = generateAvailableSlots(config);
 
         expect(slots).toHaveLength(4);
-        // First date slots
         expect(slots[0].getDate()).toBe(15);
         expect(slots[0].getHours()).toBe(9);
         expect(slots[1].getDate()).toBe(15);
         expect(slots[1].getHours()).toBe(9);
         expect(slots[1].getMinutes()).toBe(30);
-        // Second date slots
         expect(slots[2].getDate()).toBe(16);
         expect(slots[2].getHours()).toBe(9);
         expect(slots[3].getDate()).toBe(16);
@@ -123,8 +121,6 @@ describe('generateAvailableSlots', () => {
 
         const slots = generateAvailableSlots(config);
 
-        // Slots are generated if their start time is before the end time
-        // 09:00 starts before 09:45, 09:30 starts before 09:45 -> 2 slots
         expect(slots).toHaveLength(2);
         expect(slots[0].getHours()).toBe(9);
         expect(slots[0].getMinutes()).toBe(0);

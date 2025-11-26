@@ -20,7 +20,6 @@ export async function POST(request: Request) {
             );
         }
 
-        // convert targetDates (strings) → Date objects
         const normalizedConfig = {
             ...config,
             targetDates: (config.targetDates || []).map(

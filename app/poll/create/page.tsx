@@ -7,13 +7,11 @@ export default function CreatePollPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // HYBRID DATE SELECTION (days only)
   const [singleDate, setSingleDate] = useState(""); // YYYY-MM-DD
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [targetDates, setTargetDates] = useState<string[]>([]);
 
-  // TIME WINDOW + SLOT DURATION
   const [dailyStartTime, setDailyStartTime] = useState("09:00");
   const [dailyEndTime, setDailyEndTime] = useState("17:00");
   const [slotDuration, setSlotDuration] = useState<number>(60);
@@ -21,7 +19,6 @@ export default function CreatePollPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // --- helpers ---
 
   const handleAddSingleDate = () => {
     setError(null);
@@ -75,10 +72,8 @@ export default function CreatePollPage() {
     setTargetDates((prev) => prev.filter((d) => d !== date));
   };
 
-  // a tiny preview of a few dates (right-side card)
   const previewDates = useMemo(() => targetDates.slice(0, 4), [targetDates]);
 
-  // --- submit ---
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -105,7 +100,7 @@ export default function CreatePollPage() {
     }
 
     const config = {
-      targetDates, // strings "YYYY-MM-DD" – backend converts to Date[]
+      targetDates,
       dailyStartTime,
       dailyEndTime,
       slotDuration,
@@ -133,7 +128,6 @@ export default function CreatePollPage() {
       if (!res.ok) {
         setError(data.message || "Failed to create poll.");
       } else {
-        // reset form
         setTitle("");
         setDescription("");
         setSingleDate("");
@@ -155,7 +149,6 @@ export default function CreatePollPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-indigo-50 py-10 md:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* top title similar to hero */}
         <div className="mb-8 text-center md:text-left">
           <p className="text-sm uppercase tracking-[0.2em] text-indigo-500 font-semibold">
             Create Poll
@@ -169,12 +162,9 @@ export default function CreatePollPage() {
           </p>
         </div>
 
-        {/* main card */}
         <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row">
-          {/* LEFT: FORM */}
           <div className="w-full md:w-7/12 p-6 sm:p-8 lg:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* title */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2">
                   <Calendar className="w-4 h-4 text-indigo-500" />
@@ -189,7 +179,6 @@ export default function CreatePollPage() {
                 />
               </div>
 
-              {/* description */}
               <div>
                 <label className="block text-sm font-semibold text-slate-800 mb-2">
                   Description
@@ -203,7 +192,6 @@ export default function CreatePollPage() {
                 />
               </div>
 
-              {/* hybrid dates */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-semibold text-slate-800">
@@ -215,7 +203,6 @@ export default function CreatePollPage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  {/* single date */}
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                     <p className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
                       Single day
@@ -242,7 +229,6 @@ export default function CreatePollPage() {
                     </p>
                   </div>
 
-                  {/* range dates */}
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                     <p className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
                       Date range
@@ -277,7 +263,6 @@ export default function CreatePollPage() {
                   </div>
                 </div>
 
-                {/* chips */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {targetDates.length === 0 ? (
                     <p className="text-xs text-slate-500">
@@ -303,7 +288,6 @@ export default function CreatePollPage() {
                 </div>
               </div>
 
-              {/* time window */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <SlidersHorizontal className="w-4 h-4 text-indigo-500" />
@@ -357,14 +341,12 @@ export default function CreatePollPage() {
                 </p>
               </div>
 
-              {/* error */}
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
                   {error}
                 </p>
               )}
 
-              {/* submit */}
               <div className="pt-2">
                 <button
                   type="submit"
@@ -378,7 +360,6 @@ export default function CreatePollPage() {
             </form>
           </div>
 
-          {/* RIGHT: PREVIEW CARD */}
           <div className="w-full md:w-5/12 bg-slate-900 text-slate-50 px-6 py-7 md:px-7 md:py-10 flex flex-col justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pink-300">
